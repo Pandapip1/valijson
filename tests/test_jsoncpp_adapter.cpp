@@ -118,3 +118,23 @@ TEST_F(TestJsonCppAdapter, IsIntegerFalseForValuesOutsideInt64Range)
 #endif
     ASSERT_FALSE(adapter.getInteger(result));
 }
+
+TEST_F(TestJsonCppAdapter, VendoredJsonCppAsInt64DoesNotCastOutOfRangeDouble)
+{
+    // Exercises jsoncpp's own Json::Value::asInt64()/asUInt64() directly,
+    // not through JsonCppAdapter (which never reaches this path itself,
+    // since isInt64() already gates it - see the fix above). Their realValue
+    // branches previously asserted via InRange(value, minInt64, maxInt64),
+    // whose double(maxInt64) rounds up to 2^63, letting that value through
+    // to a cast that's then undefined behaviour.
+    Json::Value justUnderTwoToThe63(9223372036854774784.0); // nearest double below 2^63
+    EXPECT_EQ(static_cast<Json::Int64>(9223372036854774784LL), justUnderTwoToThe63.asInt64());
+
+#if VALIJSON_USE_EXCEPTIONS
+    Json::Value exactlyTwoToThe63(9223372036854775808.0);
+    ASSERT_THROW(exactlyTwoToThe63.asInt64(), Json::LogicError);
+
+    Json::Value exactlyTwoToThe64(18446744073709551616.0);
+    ASSERT_THROW(exactlyTwoToThe64.asUInt64(), Json::LogicError);
+#endif
+}
