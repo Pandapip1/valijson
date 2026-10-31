@@ -137,3 +137,18 @@ TEST_F(TestRapidJsonAdapter, BasicObjectIteration)
     testBasicObjectIteration<rapidjson::GenericValue<rapidjson::UTF8<>,
             rapidjson::CrtAllocator> >();
 }
+
+TEST_F(TestRapidJsonAdapter, IsIntegerFalseForValuesOutsideInt64Range)
+{
+    // IsUint64() is true for this value, which previously made isInteger()
+    // report true even though it doesn't fit int64_t and getInteger() would
+    // then silently wrap it via static_cast instead of returning false.
+    rapidjson::Document document;
+    document.SetUint64(10000000000000000000ULL);
+    valijson::adapters::RapidJsonAdapter adapter(document);
+
+    ASSERT_FALSE(adapter.isInteger());
+
+    int64_t result = 0;
+    ASSERT_FALSE(adapter.getInteger(result));
+}

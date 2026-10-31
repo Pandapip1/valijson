@@ -460,17 +460,11 @@ public:
 
     bool getInteger(int64_t &result) const
     {
-        if (m_value.IsInt()) {
-            result = m_value.GetInt();
-            return true;
-        } else if (m_value.IsInt64()) {
+        // IsUint64() is true up to UINT64_MAX, wider than int64_t - use
+        // IsInt64()/GetInt64() instead, which already check the real range
+        // and alias the same bits regardless of how the value was stored.
+        if (m_value.IsInt64()) {
             result = m_value.GetInt64();
-            return true;
-        } else if (m_value.IsUint()) {
-            result = static_cast<int64_t>(m_value.GetUint());
-            return true;
-        } else if (m_value.IsUint64()) {
-            result = static_cast<int64_t>(m_value.GetUint64());
             return true;
         }
 
@@ -548,7 +542,10 @@ public:
 
     bool isInteger() const
     {
-        return m_value.IsInt() || m_value.IsInt64() || m_value.IsUint() || m_value.IsUint64();
+        // IsInt()/IsUint()'s ranges are already covered by IsInt64(); dropping
+        // IsUint64() specifically matters, since it's true up to UINT64_MAX -
+        // wider than what getInteger() can actually deliver via int64_t.
+        return m_value.IsInt64();
     }
 
     bool isNull() const
