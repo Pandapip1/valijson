@@ -101,3 +101,20 @@ TEST_F(TestJsonCppAdapter, GetIntegerDoesNotThrowForLargeInt64Values)
     ASSERT_TRUE(adapter.getInteger(result));
     EXPECT_EQ(4000000000, result);
 }
+
+TEST_F(TestJsonCppAdapter, IsIntegerFalseForValuesOutsideInt64Range)
+{
+    // isIntegral() only checks the value's stored type tag, not whether it
+    // actually fits int64_t - a uintValue this large passes isIntegral() but
+    // getInteger()'s asInt64() then throws, contradicting isInteger()==true.
+    Json::Value document(static_cast<Json::UInt64>(10000000000000000000ULL));
+    valijson::adapters::JsonCppAdapter adapter(document);
+
+    ASSERT_FALSE(adapter.isInteger());
+
+    int64_t result = 0;
+#if VALIJSON_USE_EXCEPTIONS
+    ASSERT_NO_THROW(adapter.getInteger(result));
+#endif
+    ASSERT_FALSE(adapter.getInteger(result));
+}

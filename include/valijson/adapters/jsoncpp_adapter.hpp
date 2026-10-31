@@ -327,10 +327,10 @@ public:
 
     bool getInteger(int64_t &result) const
     {
-        if (m_value.isIntegral()) {
-            // asInt() is 32-bit and throws Json::LogicError for values that
-            // don't fit, even with VALIJSON_USE_EXCEPTIONS=0 - asInt64()
-            // actually matches this function's int64_t contract.
+        // isIntegral() only checks the stored type's tag, not whether the
+        // magnitude fits int64_t - asInt64() asserts/throws for a uintValue
+        // or realValue outside that range, so guard on isInt64() instead.
+        if (m_value.isInt64()) {
             result = m_value.asInt64();
             return true;
         }
@@ -409,7 +409,13 @@ public:
 
     bool isInteger() const
     {
-        return m_value.isIntegral() && !m_value.isBool();
+        // isIntegral() only checks the stored type's tag (int/uint/whole
+        // double), not whether the magnitude actually fits int64_t - a
+        // uintValue or realValue above INT64_MAX passes isIntegral() but
+        // then getInteger()'s asInt64() throws. isInt64() checks the real
+        // range (and already handles the 2^63-as-double rounding issue
+        // correctly via a strict <), matching what getInteger() can deliver.
+        return m_value.isInt64() && !m_value.isBool();
     }
 
     bool isNull() const
