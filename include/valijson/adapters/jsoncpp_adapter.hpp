@@ -328,7 +328,10 @@ public:
     bool getInteger(int64_t &result) const
     {
         if (m_value.isIntegral()) {
-            result = static_cast<int64_t>(m_value.asInt());
+            // asInt() is 32-bit and throws Json::LogicError for values that
+            // don't fit, even with VALIJSON_USE_EXCEPTIONS=0 - asInt64()
+            // actually matches this function's int64_t contract.
+            result = m_value.asInt64();
             return true;
         }
 

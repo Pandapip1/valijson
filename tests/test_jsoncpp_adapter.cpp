@@ -1,6 +1,9 @@
 
 #include <gtest/gtest.h>
 
+#include <cstdint>
+#include <limits>
+
 #include <valijson/adapters/jsoncpp_adapter.hpp>
 
 class TestJsonCppAdapter : public testing::Test
@@ -80,4 +83,21 @@ TEST_F(TestJsonCppAdapter, BasicObjectIteration)
 
     // Ensure that the correct number of elements were iterated over
     EXPECT_EQ( numElements, expectedValue );
+}
+
+TEST_F(TestJsonCppAdapter, GetIntegerDoesNotThrowForLargeInt64Values)
+{
+    // asInt() is 32-bit and throws Json::LogicError for a value this large,
+    // even though it fits in int64_t (the function's own contract).
+    Json::Value document(static_cast<Json::Int64>(4000000000));
+    valijson::adapters::JsonCppAdapter adapter(document);
+
+    ASSERT_TRUE(adapter.isInteger());
+
+    int64_t result = 0;
+#if VALIJSON_USE_EXCEPTIONS
+    ASSERT_NO_THROW(adapter.getInteger(result));
+#endif
+    ASSERT_TRUE(adapter.getInteger(result));
+    EXPECT_EQ(4000000000, result);
 }
