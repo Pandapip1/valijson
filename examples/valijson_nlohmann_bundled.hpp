@@ -688,7 +688,10 @@ protected:
         if (d < static_cast<double>(std::numeric_limits<int64_t>::min())) {
             return false;
         }
-        if (d > static_cast<double>(std::numeric_limits<int64_t>::max())) {
+        // INT64_MAX rounds up to exactly 2^63 as a double; >= rejects that
+        // boundary value instead of letting it through to an out-of-range,
+        // UB cast below.
+        if (d >= static_cast<double>(std::numeric_limits<int64_t>::max())) {
             return false;
         }
         double intPart = 0.0;
@@ -6715,7 +6718,7 @@ private:
             const int64_t value = node.asInteger();
             if (value >= 0) {
                 constraints::MaxItemsConstraint constraint;
-                constraint.setMaxItems(value);
+                constraint.setMaxItems(static_cast<uint64_t>(value));
                 return constraint;
             }
         }
@@ -6739,7 +6742,7 @@ private:
             const int64_t value = node.asInteger();
             if (value >= 0) {
                 constraints::MaxLengthConstraint constraint;
-                constraint.setMaxLength(value);
+                constraint.setMaxLength(static_cast<uint64_t>(value));
                 return constraint;
             }
         }
@@ -6765,7 +6768,7 @@ private:
             int64_t value = node.asInteger();
             if (value >= 0) {
                 constraints::MaxPropertiesConstraint constraint;
-                constraint.setMaxProperties(value);
+                constraint.setMaxProperties(static_cast<uint64_t>(value));
                 return constraint;
             }
         }
@@ -6843,7 +6846,7 @@ private:
             const int64_t value = node.asInteger();
             if (value >= 0) {
                 constraints::MinItemsConstraint constraint;
-                constraint.setMinItems(value);
+                constraint.setMinItems(static_cast<uint64_t>(value));
                 return constraint;
             }
         }
@@ -6866,7 +6869,7 @@ private:
             const int64_t value = node.asInteger();
             if (value >= 0) {
                 constraints::MinLengthConstraint constraint;
-                constraint.setMinLength(value);
+                constraint.setMinLength(static_cast<uint64_t>(value));
                 return constraint;
             }
         }
@@ -6892,7 +6895,7 @@ private:
             int64_t value = node.asInteger();
             if (value >= 0) {
                 constraints::MinPropertiesConstraint constraint;
-                constraint.setMinProperties(value);
+                constraint.setMinProperties(static_cast<uint64_t>(value));
                 return constraint;
             }
         }
@@ -7857,7 +7860,10 @@ inline bool isDoubleAnInteger(const AdapterType &target)
     if (value < static_cast<double>(std::numeric_limits<int64_t>::min())) {
         return false;
     }
-    if (value > static_cast<double>(std::numeric_limits<int64_t>::max())) {
+    // INT64_MAX isn't exactly representable as a double, so the cast above
+    // rounds up to exactly 2^63 - use >= so that boundary value, one past
+    // the real max, is correctly rejected instead of hitting UB below.
+    if (value >= static_cast<double>(std::numeric_limits<int64_t>::max())) {
         return false;
     }
     double intPart = 0.0;
@@ -8782,7 +8788,7 @@ public:
             // Casting a double outside the range of int64_t is undefined
             // behaviour, so check those values in floating point instead.
             if (d < static_cast<double>(std::numeric_limits<int64_t>::min()) ||
-                    d > static_cast<double>(std::numeric_limits<int64_t>::max())) {
+                    d >= static_cast<double>(std::numeric_limits<int64_t>::max())) {
                 if (fabs(remainder(d, static_cast<double>(divisor))) >
                         std::numeric_limits<double>::epsilon()) {
                     if (m_results) {

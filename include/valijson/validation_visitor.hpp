@@ -41,7 +41,10 @@ inline bool isDoubleAnInteger(const AdapterType &target)
     if (value < static_cast<double>(std::numeric_limits<int64_t>::min())) {
         return false;
     }
-    if (value > static_cast<double>(std::numeric_limits<int64_t>::max())) {
+    // INT64_MAX isn't exactly representable as a double, so the cast above
+    // rounds up to exactly 2^63 - use >= so that boundary value, one past
+    // the real max, is correctly rejected instead of hitting UB below.
+    if (value >= static_cast<double>(std::numeric_limits<int64_t>::max())) {
         return false;
     }
     double intPart = 0.0;
@@ -966,7 +969,7 @@ public:
             // Casting a double outside the range of int64_t is undefined
             // behaviour, so check those values in floating point instead.
             if (d < static_cast<double>(std::numeric_limits<int64_t>::min()) ||
-                    d > static_cast<double>(std::numeric_limits<int64_t>::max())) {
+                    d >= static_cast<double>(std::numeric_limits<int64_t>::max())) {
                 if (fabs(remainder(d, static_cast<double>(divisor))) >
                         std::numeric_limits<double>::epsilon()) {
                     if (m_results) {

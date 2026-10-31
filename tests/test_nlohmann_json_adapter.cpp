@@ -181,3 +181,48 @@ TEST_F(TestNlohmannJsonAdapter, NonFiniteNumbersRejectedEvenWhenNullAllowed)
     EXPECT_TRUE(validator.validate(schema, adapterInf, nullptr))
         << "Infinity should pass validation when null is allowed";
 }
+
+TEST_F(TestNlohmannJsonAdapter, Int64BoundaryIsIntegerExcludesTwoToThe63)
+{
+    using namespace valijson;
+    using namespace valijson::adapters;
+
+    nlohmann::json schemaJson = {
+        {"type", "object"},
+        {"properties", {
+            {"value", {{"type", "integer"}}}
+        }},
+        {"required", nlohmann::json::array({"value"})}
+    };
+
+    Schema schema;
+    SchemaParser parser;
+    NlohmannJsonAdapter schemaAdapter(schemaJson);
+    parser.populateSchema(schemaAdapter, schema);
+    Validator validator(Validator::kStrongTypes);
+
+    // static_cast<double>(INT64_MAX) rounds up to exactly 2^63, one past the
+    // real max - this must be rejected, not accepted and later UB-cast.
+    nlohmann::json docAtTwoToThe63;
+    docAtTwoToThe63["value"] = 9223372036854775808.0;
+    NlohmannJsonAdapter adapterAtTwoToThe63(docAtTwoToThe63);
+    EXPECT_FALSE(validator.validate(schema, adapterAtTwoToThe63, nullptr))
+        << "2^63 is one past INT64_MAX and must not validate as an integer";
+
+    // Nearest double strictly below 2^63 (ULP spacing is 1024 just below
+    // 2^63, since doubles in [2^62, 2^63) have one fewer exponent bit of
+    // headroom than [2^63, 2^64)) - genuinely in range, must still validate.
+    nlohmann::json docJustBelow;
+    docJustBelow["value"] = 9223372036854774784.0;
+    NlohmannJsonAdapter adapterJustBelow(docJustBelow);
+    EXPECT_TRUE(validator.validate(schema, adapterJustBelow, nullptr))
+        << "The nearest double below 2^63 is in range and should validate";
+
+    // INT64_MIN (-2^63) is exactly representable as a double; sanity-check
+    // the untouched lower bound still works.
+    nlohmann::json docAtInt64Min;
+    docAtInt64Min["value"] = -9223372036854775808.0;
+    NlohmannJsonAdapter adapterAtInt64Min(docAtInt64Min);
+    EXPECT_TRUE(validator.validate(schema, adapterAtInt64Min, nullptr))
+        << "INT64_MIN is exactly representable and in range";
+}

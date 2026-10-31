@@ -98,7 +98,10 @@ protected:
         if (d < static_cast<double>(std::numeric_limits<int64_t>::min())) {
             return false;
         }
-        if (d > static_cast<double>(std::numeric_limits<int64_t>::max())) {
+        // INT64_MAX rounds up to exactly 2^63 as a double; >= rejects that
+        // boundary value instead of letting it through to an out-of-range,
+        // UB cast below.
+        if (d >= static_cast<double>(std::numeric_limits<int64_t>::max())) {
             return false;
         }
         double intPart = 0.0;
