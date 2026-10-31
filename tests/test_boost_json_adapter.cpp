@@ -123,3 +123,17 @@ TEST_F(TestBoostJsonAdapter, UnsignedIntegersAreIntegers)
         EXPECT_TRUE( adapter.isNumber() );
     }
 }
+
+TEST_F(TestBoostJsonAdapter, GetIntegerFailsForValuesOutsideInt64Range)
+{
+    // isInteger() is still true here (see UnsignedIntegersAreIntegers above
+    // - that's by design), but getInteger() previously silently wrapped this
+    // via static_cast<int64_t> instead of failing.
+    boost::json::value document = boost::json::parse("9223372036854775808");
+    valijson::adapters::BoostJsonAdapter adapter(document);
+
+    ASSERT_TRUE( adapter.isInteger() );
+
+    int64_t result = 0;
+    ASSERT_FALSE( adapter.getInteger(result) );
+}

@@ -25,6 +25,8 @@
 
 #pragma once
 
+#include <cstdint>
+#include <limits>
 #include <optional>
 #include <string>
 
@@ -335,7 +337,15 @@ public:
             result = m_value.get_int64();
             return true;
         } else if (m_value.is_uint64()) {
-            result = static_cast<int64_t>(m_value.get_uint64());
+            // is_uint64() doesn't mean the value is too large for int64_t -
+            // boost::json::value(5u) is_uint64() too (see isInteger() below) -
+            // but when it genuinely is too large, this cast would otherwise
+            // silently wrap instead of failing.
+            const uint64_t u = m_value.get_uint64();
+            if (u > static_cast<uint64_t>(std::numeric_limits<int64_t>::max())) {
+                return false;
+            }
+            result = static_cast<int64_t>(u);
             return true;
         }
         return false;
