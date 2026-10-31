@@ -25,6 +25,7 @@
 
 #pragma once
 
+#include <limits>
 #include <optional>
 #include <string>
 #include <utility>
@@ -338,12 +339,31 @@ public:
 
     bool getInteger(int64_t &result) const
     {
-        if (isInteger()) {
-            result = m_value.toLongLong();
-            return true;
+        if (!isInteger()) {
+            return false;
         }
 
-        return false;
+        // toLongLong()'s "ok" output doesn't catch an unsigned value too
+        // large for int64_t - it silently reinterprets the bits instead
+        // (confirmed empirically: ok=true, result wraps to a negative
+        // value). Range-check explicitly via toULongLong() for the
+        // unsigned types where this can happen.
+        switch (m_value.typeId()) {
+            case QMetaType::UInt:
+            case QMetaType::UShort:
+            case QMetaType::ULong:
+            case QMetaType::ULongLong: {
+                const qulonglong u = m_value.toULongLong();
+                if (u > static_cast<qulonglong>(std::numeric_limits<qlonglong>::max())) {
+                    return false;
+                }
+                result = static_cast<int64_t>(u);
+                return true;
+            }
+            default:
+                result = m_value.toLongLong();
+                return true;
+        }
     }
 
     /**

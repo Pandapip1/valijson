@@ -82,3 +82,29 @@ TEST_F(TestQtVariantAdapter, BasicObjectIteration)
     // Ensure that the correct number of elements were iterated over
     EXPECT_EQ( numElements, expectedValue );
 }
+
+TEST_F(TestQtVariantAdapter, GetIntegerFailsForUnsignedValuesOutsideInt64Range)
+{
+    // QVariant::toLongLong()'s "ok" output doesn't catch an unsigned value
+    // too large for int64_t - it previously returned ok=true with the value
+    // silently reinterpreted as negative instead of failing.
+    QVariant document(static_cast<qulonglong>(10000000000000000000ULL));
+    valijson::adapters::QtVariantAdapter adapter(document);
+
+    ASSERT_TRUE( adapter.isInteger() );
+
+    int64_t result = 0;
+    ASSERT_FALSE( adapter.getInteger(result) );
+}
+
+TEST_F(TestQtVariantAdapter, GetIntegerStillWorksForSmallUnsignedValues)
+{
+    QVariant document(static_cast<qulonglong>(5ULL));
+    valijson::adapters::QtVariantAdapter adapter(document);
+
+    ASSERT_TRUE( adapter.isInteger() );
+
+    int64_t result = 0;
+    ASSERT_TRUE( adapter.getInteger(result) );
+    EXPECT_EQ( int64_t(5), result );
+}
