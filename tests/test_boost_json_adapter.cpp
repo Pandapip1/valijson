@@ -167,6 +167,28 @@ TEST_F(TestBoostJsonAdapter, EnumComparisonDoesNotThrowForValuesOutsideInt64Rang
     EXPECT_FALSE( weakValidator.validate(schema, adapter, nullptr) );
 }
 
+TEST_F(TestBoostJsonAdapter, SchemaParserReportsOutOfRangeMaximumCleanly)
+{
+    // makeMaximumConstraint() used to check maybeDouble() (permissive for
+    // this value, see UnsignedIntegersAreIntegers above) and then call the
+    // throwing asDouble() accessor directly, so parsing this schema failed
+    // via the adapter's generic "JSON value cannot be cast to a double."
+    // message instead of schema_parser's own constraint-specific one.
+    using namespace valijson;
+
+    boost::json::value schemaJson = boost::json::parse(R"({"maximum": 18446744073709551615})");
+    valijson::adapters::BoostJsonAdapter schemaAdapter(schemaJson);
+    Schema schema;
+    SchemaParser parser;
+
+    try {
+        parser.populateSchema(schemaAdapter, schema);
+        FAIL() << "Expected populateSchema() to throw";
+    } catch (const std::runtime_error &e) {
+        EXPECT_STREQ("Expected numeric value for maximum constraint.", e.what());
+    }
+}
+
 TEST_F(TestBoostJsonAdapter, MaximumComparisonDoesNotThrowForValuesOutsideInt64Range)
 {
     // MaximumConstraint/MinimumConstraint had the same unfixed asDouble()
