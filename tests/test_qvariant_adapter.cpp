@@ -3,6 +3,9 @@
 #include <gtest/gtest.h>
 
 #include <valijson/adapters/qvariant_adapter.hpp>
+#include <valijson/schema.hpp>
+#include <valijson/schema_parser.hpp>
+#include <valijson/validator.hpp>
 
 class TestQtVariantAdapter : public testing::Test
 {
@@ -95,6 +98,33 @@ TEST_F(TestQtVariantAdapter, GetIntegerFailsForUnsignedValuesOutsideInt64Range)
 
     int64_t result = 0;
     ASSERT_FALSE( adapter.getInteger(result) );
+}
+
+TEST_F(TestQtVariantAdapter, EnumComparisonDoesNotThrowForValuesOutsideInt64Range)
+{
+    // isInteger() stays true for this value by design, so EnumConstraint
+    // reaches BasicAdapter::equalTo()'s numeric comparison path, which
+    // previously called the throwing getNumber()/asInteger() accessors
+    // directly - dying via an uncaught throw (VALIJSON_USE_EXCEPTIONS=1) or
+    // abort() (VALIJSON_USE_EXCEPTIONS=0). Neither should happen now.
+    using namespace valijson;
+
+    QVariantMap schemaMap;
+    schemaMap["enum"] = QVariantList{5};
+    QVariant schemaJson(schemaMap);
+    Schema schema;
+    SchemaParser parser;
+    valijson::adapters::QtVariantAdapter schemaAdapter(schemaJson);
+    parser.populateSchema(schemaAdapter, schema);
+
+    QVariant document(static_cast<qulonglong>(10000000000000000000ULL));
+    valijson::adapters::QtVariantAdapter adapter(document);
+
+    Validator strictValidator(Validator::kStrongTypes);
+    EXPECT_FALSE( strictValidator.validate(schema, adapter, nullptr) );
+
+    Validator weakValidator(Validator::kWeakTypes);
+    EXPECT_FALSE( weakValidator.validate(schema, adapter, nullptr) );
 }
 
 TEST_F(TestQtVariantAdapter, GetIntegerStillWorksForSmallUnsignedValues)

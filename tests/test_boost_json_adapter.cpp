@@ -3,6 +3,9 @@
 #include <boost/json/src.hpp> // Needs to be included exactly once in the code to use header-only version of Boost.JSON
 
 #include <valijson/adapters/boost_json_adapter.hpp>
+#include <valijson/schema.hpp>
+#include <valijson/schema_parser.hpp>
+#include <valijson/validator.hpp>
 
 class TestBoostJsonAdapter : public testing::Test
 {
@@ -136,4 +139,30 @@ TEST_F(TestBoostJsonAdapter, GetIntegerFailsForValuesOutsideInt64Range)
 
     int64_t result = 0;
     ASSERT_FALSE( adapter.getInteger(result) );
+}
+
+TEST_F(TestBoostJsonAdapter, EnumComparisonDoesNotThrowForValuesOutsideInt64Range)
+{
+    // isInteger() stays true for this value (see UnsignedIntegersAreIntegers
+    // above), so EnumConstraint reaches BasicAdapter::equalTo()'s numeric
+    // comparison path. That path previously called the throwing getNumber()/
+    // asInteger() accessors directly, so it died here too - with
+    // VALIJSON_USE_EXCEPTIONS=1 via an uncaught throw, and with
+    // VALIJSON_USE_EXCEPTIONS=0 via abort(). Neither should happen now.
+    using namespace valijson;
+
+    boost::json::value schemaJson = boost::json::parse(R"({"enum": [5]})");
+    Schema schema;
+    SchemaParser parser;
+    valijson::adapters::BoostJsonAdapter schemaAdapter(schemaJson);
+    parser.populateSchema(schemaAdapter, schema);
+
+    boost::json::value document = boost::json::parse("9223372036854775808");
+    valijson::adapters::BoostJsonAdapter adapter(document);
+
+    Validator strictValidator(Validator::kStrongTypes);
+    EXPECT_FALSE( strictValidator.validate(schema, adapter, nullptr) );
+
+    Validator weakValidator(Validator::kWeakTypes);
+    EXPECT_FALSE( weakValidator.validate(schema, adapter, nullptr) );
 }
