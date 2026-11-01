@@ -649,10 +649,18 @@ public:
             return true;
         }
 
+        double value = 0.;
+        if (!m_target.asDouble(value)) {
+            if (m_results) {
+                m_results->pushError(m_path, "Value could not be converted to a number to check the maximum constraint");
+            }
+            return false;
+        }
+
         const double maximum = constraint.getMaximum();
 
         if (constraint.getExclusiveMaximum()) {
-            if (m_target.asDouble() >= maximum) {
+            if (value >= maximum) {
                 if (m_results) {
                     m_results->pushError(m_path, "Expected number less than " + std::to_string(maximum));
                 }
@@ -660,7 +668,7 @@ public:
                 return false;
             }
 
-        } else if (m_target.asDouble() > maximum) {
+        } else if (value > maximum) {
             if (m_results) {
                 m_results->pushError(m_path, "Expected number less than or equal to " + std::to_string(maximum));
             }
@@ -766,17 +774,25 @@ public:
             return true;
         }
 
+        double value = 0.;
+        if (!m_target.asDouble(value)) {
+            if (m_results) {
+                m_results->pushError(m_path, "Value could not be converted to a number to check the minimum constraint");
+            }
+            return false;
+        }
+
         const double minimum = constraint.getMinimum();
 
         if (constraint.getExclusiveMinimum()) {
-            if (m_target.asDouble() <= minimum) {
+            if (value <= minimum) {
                 if (m_results) {
                     m_results->pushError(m_path, "Expected number greater than " + std::to_string(minimum));
                 }
 
                 return false;
             }
-        } else if (m_target.asDouble() < minimum) {
+        } else if (value < minimum) {
             if (m_results) {
                 m_results->pushError(m_path, "Expected number greater than or equal to " + std::to_string(minimum));
             }

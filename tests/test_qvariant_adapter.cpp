@@ -127,6 +127,31 @@ TEST_F(TestQtVariantAdapter, EnumComparisonDoesNotThrowForValuesOutsideInt64Rang
     EXPECT_FALSE( weakValidator.validate(schema, adapter, nullptr) );
 }
 
+TEST_F(TestQtVariantAdapter, MaximumComparisonDoesNotThrowForValuesOutsideInt64Range)
+{
+    // MaximumConstraint/MinimumConstraint had the same unfixed asDouble()
+    // call as EnumConstraint above, reached via maybeDouble() (also
+    // permissive for this value), so they died the same way.
+    using namespace valijson;
+
+    QVariantMap schemaMap;
+    schemaMap["maximum"] = 10;
+    QVariant schemaJson(schemaMap);
+    Schema schema;
+    SchemaParser parser;
+    valijson::adapters::QtVariantAdapter schemaAdapter(schemaJson);
+    parser.populateSchema(schemaAdapter, schema);
+
+    QVariant document(static_cast<qulonglong>(10000000000000000000ULL));
+    valijson::adapters::QtVariantAdapter adapter(document);
+
+    Validator strictValidator(Validator::kStrongTypes);
+    EXPECT_FALSE( strictValidator.validate(schema, adapter, nullptr) );
+
+    Validator weakValidator(Validator::kWeakTypes);
+    EXPECT_FALSE( weakValidator.validate(schema, adapter, nullptr) );
+}
+
 TEST_F(TestQtVariantAdapter, GetIntegerStillWorksForSmallUnsignedValues)
 {
     QVariant document(static_cast<qulonglong>(5ULL));

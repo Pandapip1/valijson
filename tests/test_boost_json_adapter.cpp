@@ -166,3 +166,26 @@ TEST_F(TestBoostJsonAdapter, EnumComparisonDoesNotThrowForValuesOutsideInt64Rang
     Validator weakValidator(Validator::kWeakTypes);
     EXPECT_FALSE( weakValidator.validate(schema, adapter, nullptr) );
 }
+
+TEST_F(TestBoostJsonAdapter, MaximumComparisonDoesNotThrowForValuesOutsideInt64Range)
+{
+    // MaximumConstraint/MinimumConstraint had the same unfixed asDouble()
+    // call as EnumConstraint above, reached via maybeDouble() (also
+    // permissive for this value), so they died the same way.
+    using namespace valijson;
+
+    boost::json::value schemaJson = boost::json::parse(R"({"maximum": 10})");
+    Schema schema;
+    SchemaParser parser;
+    valijson::adapters::BoostJsonAdapter schemaAdapter(schemaJson);
+    parser.populateSchema(schemaAdapter, schema);
+
+    boost::json::value document = boost::json::parse("9223372036854775808");
+    valijson::adapters::BoostJsonAdapter adapter(document);
+
+    Validator strictValidator(Validator::kStrongTypes);
+    EXPECT_FALSE( strictValidator.validate(schema, adapter, nullptr) );
+
+    Validator weakValidator(Validator::kWeakTypes);
+    EXPECT_FALSE( weakValidator.validate(schema, adapter, nullptr) );
+}
